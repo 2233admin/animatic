@@ -1,0 +1,5 @@
+node_modules/
+.animatic/
+*.mp4
+!docs/assets/*.mp4
+renders/

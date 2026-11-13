@@ -1,0 +1,22 @@
+{
+  "takeaway": "When a PR needs one, it ships with a short video that shows how it works.",
+  "lang": "en",
+  "doc": {
+    "issuer": "animatic",
+    "subtitle": "A video for every PR that needs one",
+    "index": "ANM-001",
+    "src": "SRC / 2233admin/animatic · footage is real output"
+  },
+  "shots": [
+    { "id": "before", "kind": "scene", "html": "scenes/01-before.html",
+      "caption": "A big PR is pages of text. Reviewers run it to get it." },
+    { "id": "which", "kind": "scene", "html": "scenes/02-which.html", "highlight": [".pick"],
+      "caption": "Not every PR. Only the ones people need to see." },
+    { "id": "how", "kind": "scene", "html": "scenes/03-how.html",
+      "caption": "Film the change running, cut it into a short video." },
+    { "id": "sample", "kind": "clip", "src": "captures/sample.mp4", "trim": [0.2, 9.6],
+      "caption": "Like this: a few sheets, one line each." },
+    { "id": "lands", "kind": "scene", "html": "scenes/05-lands.html", "highlight": [".accent"],
+      "caption": "It lands on the PR, so reviewers see it work first." }
+  ]
+}

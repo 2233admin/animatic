@@ -1,0 +1,9 @@
+{
+  "takeaway": "One sentence the viewer should remember. Never shown; it decides what to cut.",
+  "lang": "en",
+  "pr": { "repo": "owner/name", "number": 1 },
+  "shots": [
+    { "id": "before", "kind": "scene", "html": "scenes/01-before.html", "caption": "Before: reviewers read the text, then run the branch." },
+    { "id": "after", "kind": "scene", "html": "scenes/02-after.html", "highlight": [".go"], "caption": "Now the PR carries a video. Watch it, get it." }
+  ]
+}

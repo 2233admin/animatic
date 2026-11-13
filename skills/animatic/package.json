@@ -1,0 +1,11 @@
+{
+  "name": "animatic-skill",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Renderer dependencies for the animatic skill",
+  "dependencies": {
+    "gsap": "3.15.0",
+    "hyperframes": "0.9.41"
+  }
+}
