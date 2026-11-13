@@ -49,9 +49,21 @@ export function attach({ video, repo, pr, heading, policy, dryRun, log = console
 
   if (dryRun) return { ...d, ok: true, dryRun: true, name };
 
+  // Direct upload can be blocked (proxies, enterprise policy). Fall back to a release asset:
+  // it will not play inline, but the reviewer still gets the video.
+  try {
+    if (d.action === "gh-attach" || d.action === "upload-api") return direct(d, { video, repo, pr, info, name, body, bodyFile });
+  } catch (e) {
+    log(`animatic attach: ${d.action} failed (${String(e.stderr || e.message).trim().split("\n").pop()}); falling back to a release asset`);
+  }
+  return viaRelease({ ...d, action: "release-asset", fellBack: d.action !== "release-asset" }, { video, repo, pr, name, body, bodyFile });
+}
+
+function direct(d, { video, repo, pr, info, name, body, bodyFile }) {
   if (d.action === "gh-attach") {
     // gh inserts the uploaded URL where the file is referenced; an empty ref line keeps it below the heading.
     fs.writeFileSync(bodyFile, body(""));
+    // gh pr comment talks GraphQL; this path needs gh >= 2.99 and an unrestricted API.
     const url = gh(["pr", "comment", String(pr), "-R", repo, "--body-file", bodyFile, "--attach", video]);
     return { ...d, ok: true, comment: url };
   }
@@ -62,20 +74,29 @@ export function attach({ video, repo, pr, heading, policy, dryRun, log = console
       "--input", video, "--jq", ".url",
     ]);
     fs.writeFileSync(bodyFile, body(url));
-    const comment = gh(["pr", "comment", String(pr), "-R", repo, "--body-file", bodyFile]);
-    return { ...d, ok: true, url, comment };
+    return { ...d, ok: true, url, comment: comment(repo, pr, bodyFile) };
   }
-  // release-asset
+}
+
+// REST only: repository-scoped endpoints work where GraphQL or other paths are blocked.
+function comment(repo, pr, bodyFile) {
+  return gh(["api", "--method", "POST", `repos/${repo}/issues/${pr}/comments`, "-F", `body=@${bodyFile}`, "--jq", ".html_url"]);
+}
+
+function viaRelease(d, { video, repo, pr, name, body, bodyFile }) {
+  let rel;
   try {
-    gh(["release", "view", RELEASE_TAG, "-R", repo]);
+    rel = JSON.parse(gh(["api", `repos/${repo}/releases/tags/${RELEASE_TAG}`, "--jq", "{id, upload_url}"]));
   } catch {
-    gh(["release", "create", RELEASE_TAG, "-R", repo, "--prerelease", "--title", "animatic media", "--notes", "PR videos made by animatic. Safe to delete."]);
+    rel = JSON.parse(gh([
+      "api", "--method", "POST", `repos/${repo}/releases`, "-f", `tag_name=${RELEASE_TAG}`, "-f", "name=animatic media",
+      "-f", "body=PR videos made by animatic. Safe to delete.", "-F", "prerelease=true", "--jq", "{id, upload_url}",
+    ]));
   }
-  const staged = path.join(path.dirname(bodyFile), name);
-  fs.copyFileSync(video, staged);
-  gh(["release", "upload", RELEASE_TAG, staged, "-R", repo, "--clobber"]);
-  const url = `https://github.com/${repo}/releases/download/${RELEASE_TAG}/${encodeURIComponent(name)}`;
-  fs.writeFileSync(bodyFile, body(`[▶ 看视频](${url})`));
-  const comment = gh(["pr", "comment", String(pr), "-R", repo, "--body-file", bodyFile]);
-  return { ...d, ok: true, url, comment };
+  const old = gh(["api", `repos/${repo}/releases/${rel.id}/assets`, "--paginate", "--jq", `.[] | select(.name == "${name}") | .id`]);
+  for (const id of old.split("\n").filter(Boolean)) gh(["api", "--method", "DELETE", `repos/${repo}/releases/assets/${id}`]);
+  const uploadBase = rel.upload_url.replace(/\{.*\}$/, "");
+  const url = gh(["api", "--method", "POST", `${uploadBase}?name=${encodeURIComponent(name)}`, "-H", "Content-Type: video/mp4", "--input", video, "--jq", ".browser_download_url"]);
+  fs.writeFileSync(bodyFile, body(`[▶ Watch the video](${url})`));
+  return { ...d, ok: true, url, comment: comment(repo, pr, bodyFile) };
 }
